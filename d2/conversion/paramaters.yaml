@@ -1,0 +1,28 @@
+BASE_PATH: /opt/kuna/data/clean_vertexFull100k_S2018/vertexFull100k_S2018/
+IMAGES_PATH: JPEGImages
+ANNOTATIONS_PATH: labels
+# Assuming all images are same size, otherwise need to add images loading
+IMAGE_WIDTH: 640
+IMAGE_HEIGHT: 360
+MAPPING:
+  0: 1
+  1: 2
+  2: 3
+  16: 4
+CATEGORIES:
+- supercategory: person
+  id: 1
+  name: person
+- supercategory: bike
+  id: 2
+  name: bike
+- supercategory: car
+  id: 3
+  name: car
+- supercategory: animal
+  id: 4
+  name: animal
+DATA_SPLITS:
+  TRAIN: train_yolo_list.txt
+  VAL: val_yolo_list.txt
+  TEST: test_yolo_list.txt
