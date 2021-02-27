@@ -1,3 +1,8 @@
+"""Script for converting annotations from YOLO to COCO format.
+
+Usage: python conversion.yolo_to_coco conversion/paramaters.yaml.
+Outputs: data splits in COCO json format.
+"""
 import json
 import pathlib
 import os
@@ -5,6 +10,7 @@ import os
 from typing import Tuple, List, Set
 
 import fire
+import tqdm
 import yaml
 
 import numpy as np
@@ -89,12 +95,12 @@ def convert(config_path: str):
     categories = config["CATEGORIES"]
     splits = config["DATA_SPLITS"]
 
-    for split in splits:
+    for split in tqdm.tqdm(splits):
         image_annotations = []
         coco_annotations = []
         image_list = get_images_list(base_path, splits[split])
 
-        for idx, image in enumerate(image_list):
+        for idx, image in tqdm.tqdm(enumerate(image_list), leave=False):
             # Camera identifier and frame
             image_path = os.path.join(base_path, config["IMAGES_PATH"], image)
             if not os.path.isfile(image_path):
