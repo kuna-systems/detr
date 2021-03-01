@@ -1,11 +1,12 @@
 """Script for converting annotations from YOLO to COCO format.
 
-Usage: python conversion.yolo_to_coco conversion/paramaters.yaml.
+Usage: python -m conversion.yolo_to_coco conversion/paramaters.yaml.
 Outputs: data splits in COCO json format.
 """
 import json
 import pathlib
 import os
+import logging
 
 from typing import Tuple, List, Set
 
@@ -63,6 +64,7 @@ def convert_annotation(
 
 
 def get_images_list(base_path, filepath) -> Set[str]:
+    """Returns list of images identifiers -> camera_id/frame_id."""
     with open(os.path.join(base_path, filepath)) as f:
         content = f.readlines()
     content = [x.strip() for x in content]
@@ -100,22 +102,25 @@ def convert(config_path: str):
         coco_annotations = []
         image_list = get_images_list(base_path, splits[split])
 
-        for idx, image in tqdm.tqdm(enumerate(image_list), leave=False):
-            # Camera identifier and frame
-            image_path = os.path.join(base_path, config["IMAGES_PATH"], image)
+        for idx, image_identifier in tqdm.tqdm(enumerate(image_list), leave=False):
+            image_path = os.path.join(
+                base_path, config["IMAGES_PATH"], image_identifier
+            )
             if not os.path.isfile(image_path):
-                print(image_path)
+                logging.warning("{} not found".format(image_path))
                 continue
 
             image_idx += 1
             image_annotations.append(
-                create_image_annotation(image, image_width, image_height, idx)
+                create_image_annotation(
+                    image_identifier, image_width, image_height, idx
+                )
             )
 
             label_path = os.path.join(
                 labels_path,
-                os.path.basename(os.path.dirname(image)),
-                pathlib.Path(image).with_suffix(".txt").name,
+                os.path.basename(os.path.dirname(image_identifier)),
+                pathlib.Path(image_identifier).with_suffix(".txt").name,
             )
 
             if is_non_zero_file(label_path):
