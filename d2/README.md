@@ -42,14 +42,19 @@ python train_net.py --config configs/detr_segm_256_6_6_torchvision.yaml --num-gp
 
 Evaluation results are listed in [EVALUATION.MD](EVALUATION.md)
 
-To train DETR on a single node with 2 gpus, simply use:
+To train DETR follow these steps:
+- Pull and convert pre-trained COCO weights:
+```
+python converter.py --source_model https://dl.fbaipublicfiles.com/detr/detr-r50-e632da11.pth --output_model converted_model.pth
+```
+- Run the training with 2 gpus:
 ```
 python train_net.py --config=configs/vertex_coco_finetune.yaml \
 --num-gpus=2 \
 --images_path=/opt/kuna/data/clean_vertexFull100k_S2018/vertexFull100k_S2018/JPEGImages
 ```
 
-To evaluate a trained model with 2 gpus, define a path to model weights as MODEL_WEIGHTS and run:
+To evaluate a trained model with 2 gpus, define a path to model checkpoint as `MODEL_WEIGHTS` and run:
 
 ```
 python train_net.py --config=configs/vertex_coco_finetune.yaml \
@@ -58,3 +63,5 @@ python train_net.py --config=configs/vertex_coco_finetune.yaml \
 DATASETS.TEST '("test_kuna_coco", )' \
 DATASETS.PROPOSAL_FILES_TEST '("/opt/kuna/data/clean_vertexFull100k_S2018/vertexFull100k_S2018/vertex_coco/test_coco_dataset.json",)'
 ```
+
+Example of running inference shown in [inference.ipynb](inference.ipynb)
