@@ -37,3 +37,24 @@ To fine-tune DETR for instance segmentation on a single node with 8 gpus, simply
 ```
 python train_net.py --config configs/detr_segm_256_6_6_torchvision.yaml --num-gpus 8 MODEL.DETR.FROZEN_WEIGHTS <model_path>
 ```
+
+## Vertex
+
+Evaluation results are listed in [EVALUATION.MD](EVALUATION.md)
+
+To train DETR on a single node with 2 gpus, simply use:
+```
+python train_net.py --config=configs/vertex_coco_finetune.yaml \
+--num-gpus=2 \
+--images_path=/opt/kuna/data/clean_vertexFull100k_S2018/vertexFull100k_S2018/JPEGImages
+```
+
+To evaluate a trained model with 2 gpus, define a path to model weights as MODEL_WEIGHTS and run:
+
+```
+python train_net.py --config=configs/vertex_coco_finetune.yaml \
+--num-gpus=2 --images_path=/opt/kuna/data/clean_vertexFull100k_S2018/vertexFull100k_S2018/JPEGImages \
+--eval-only MODEL.WEIGHTS $MODEL_WEIGHTS \
+DATASETS.TEST '("test_kuna_coco", )' \
+DATASETS.PROPOSAL_FILES_TEST '("/opt/kuna/data/clean_vertexFull100k_S2018/vertexFull100k_S2018/vertex_coco/test_coco_dataset.json",)'
+```
