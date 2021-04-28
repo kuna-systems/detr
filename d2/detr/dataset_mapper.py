@@ -5,9 +5,12 @@ import logging
 import numpy as np
 import torch
 
+import albumentations as albu
+
 from detectron2.data import detection_utils as utils
 from detectron2.data import transforms as T
 from detectron2.data.transforms import TransformGen
+from detectron2.structures import BoxMode
 
 __all__ = ["DetrDatasetMapper"]
 
@@ -32,11 +35,48 @@ def build_transform_gen(cfg, is_train):
     logger = logging.getLogger(__name__)
     tfm_gens = []
     if is_train:
-        tfm_gens.append(T.RandomFlip())
+        tfm_gens.append(T.RandomFlip(horizontal=True, vertical=False))
     tfm_gens.append(T.ResizeShortestEdge(min_size, max_size, sample_style))
     if is_train:
         logger.info("TransformGens used in training: " + str(tfm_gens))
     return tfm_gens
+
+
+def build_augmentations(border_mode=0):
+    return albu.Compose([
+        albu.Rotate(limit=10, p=0.5),
+        albu.RandomScale(scale_limit=0.1, p=0.5),
+        albu.OneOf([
+            albu.CLAHE(clip_limit=2),
+            albu.IAAEmboss(),
+            albu.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.5),
+            albu.RandomGamma(),
+        ], p=0.5),
+        albu.OneOf([
+            albu.MotionBlur(p=0.2),
+            albu.MedianBlur(blur_limit=3, p=0.1),
+            albu.Blur(blur_limit=3, p=0.1),
+        ], p=0.4),
+        albu.OneOf(
+            [
+                albu.RGBShift(r_shift_limit=30, g_shift_limit=30, b_shift_limit=30, p=.4),
+                albu.HueSaturationValue(hue_shift_limit=30, sat_shift_limit=30, val_shift_limit=30, p=.4)
+            ],
+            p=.2
+        ),
+        albu.OneOf([
+            albu.GaussNoise(),
+            albu.ISONoise(intensity=(0.1, 0.3), p=0.6)
+        ], p=0.5),
+        albu.OneOf([
+            albu.RandomShadow(),
+            albu.RandomSunFlare(src_radius=200),
+            albu.RandomSnow(),
+            albu.RandomRain(),
+            albu.RandomFog(fog_coef_upper=0.5)
+        ], p=0.1)
+    ], p=1,
+        bbox_params=albu.BboxParams(format='coco', label_fields=['category_id'], min_visibility=0.25))
 
 
 class DetrDatasetMapper:
@@ -63,6 +103,7 @@ class DetrDatasetMapper:
 
         self.mask_on = cfg.MODEL.MASK_ON
         self.tfm_gens = build_transform_gen(cfg, is_train)
+        self.aug = build_augmentations()
         logging.getLogger(__name__).info(
             "Full TransformGens used in training: {}, crop: {}".format(str(self.tfm_gens), str(self.crop_gen))
         )
@@ -81,6 +122,35 @@ class DetrDatasetMapper:
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
         image = utils.read_image(dataset_dict["file_name"], format=self.img_format)
         utils.check_image_size(dataset_dict, image)
+
+        if self.is_train:
+            boxes = [ann['bbox'] for ann in dataset_dict['annotations']]
+            labels = [ann['category_id'] for ann in dataset_dict['annotations']]
+            boxes = np.array(boxes, dtype=np.float32)
+
+            if len(boxes) > 0:
+                h, w, _ = image.shape
+                boxes[:, :] = boxes[:, :].clip(min=[0, 0, 0, 0], max=[w, h, w, h])
+
+            augm_annotation = self.aug(image=image, bboxes=boxes, category_id=labels)
+
+            image = augm_annotation['image']
+            h, w, _ = image.shape
+
+            augm_boxes = np.array(augm_annotation['bboxes'], dtype=np.float32)
+            # sometimes bbox annotations go beyond image
+            if len(augm_boxes) > 0:
+                augm_boxes[:, :] = augm_boxes[:, :].clip(min=[0, 0, 0, 0], max=[w, h, w, h])
+            augm_labels = np.array(augm_annotation['category_id'])
+            dataset_dict['annotations'] = [
+                {
+                    'iscrowd': 0,
+                    'bbox': augm_boxes[i].tolist(),
+                    'category_id': augm_labels[i],
+                    'bbox_mode': BoxMode.XYWH_ABS,
+                }
+                for i in range(len(augm_boxes))
+            ]
 
         if self.crop_gen is None:
             image, transforms = T.apply_transform_gens(self.tfm_gens, image)
