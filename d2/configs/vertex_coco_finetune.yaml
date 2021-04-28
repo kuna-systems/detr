@@ -1,0 +1,4 @@
+_BASE_: "vertex_imagenet_finetune.yaml"
+OUTPUT_DIR: "./logs/coco_finetune_test"
+MODEL:
+  WEIGHTS: "converted_model.pth"

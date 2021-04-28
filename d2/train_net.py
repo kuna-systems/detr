@@ -26,6 +26,7 @@ from detectron2.engine import DefaultTrainer, default_argument_parser, default_s
 from detectron2.evaluation import COCOEvaluator, verify_results
 
 from detectron2.solver.build import maybe_add_gradient_clipping
+from detectron2.data.datasets import register_coco_instances
 
 
 class Trainer(DefaultTrainer):
@@ -116,8 +117,22 @@ def setup(args):
     return cfg
 
 
+def register_dataset(cfg, args):
+    for dataset, files in zip(cfg.DATASETS.TRAIN, cfg.DATASETS.PROPOSAL_FILES_TRAIN):
+        register_coco_instances(dataset,
+                                {},
+                                files,
+                                args.images_path)
+    for dataset, files in zip(cfg.DATASETS.TEST, cfg.DATASETS.PROPOSAL_FILES_TEST):
+        register_coco_instances(dataset,
+                                {},
+                                files,
+                                args.images_path)
+
+
 def main(args):
     cfg = setup(args)
+    register_dataset(cfg, args)
 
     if args.eval_only:
         model = Trainer.build_model(cfg)
@@ -133,7 +148,13 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = default_argument_parser().parse_args()
+    parser = default_argument_parser()
+    parser.add_argument(
+        "--images_path",
+        default="./",
+        help="Path to images",
+    )
+    args = parser.parse_args()
     print("Command Line Args:", args)
     launch(
         main,
